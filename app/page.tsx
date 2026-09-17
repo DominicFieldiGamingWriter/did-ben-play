@@ -1663,9 +1663,11 @@ function collectOneXBetEventCandidates(
   return results;
 }
 
+type OneXBetQueryParams = Record<string, string | number | undefined>;
+
 async function fetch1xBetJson(
   path: string,
-  params: Record<string, string | number>,
+  params: OneXBetQueryParams,
   signal: AbortSignal
 ): Promise<any | null> {
   const bases = [
@@ -1678,6 +1680,10 @@ async function fetch1xBetJson(
   const query = new URLSearchParams();
 
   for (const [key, value] of Object.entries(params)) {
+    if (value === undefined) {
+      continue;
+    }
+
     query.set(key, String(value));
   }
 
@@ -1854,7 +1860,7 @@ async function find1xBetEventId(
    * event. GetGameZip remains the source used for the actual first-
    * goalscorer market and price.
    */
-  const feedVariants = [
+  const feedVariants: OneXBetQueryParams[] = [
     {
       sports: 1,
       count: 500,
@@ -2364,7 +2370,7 @@ async function fetch1xBetFirstGoalScorer(
       return null;
     }
 
-    const gameZipVariants = [
+    const gameZipVariants: OneXBetQueryParams[] = [
       {
         id: eventId,
         lng: "en",
