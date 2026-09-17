@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 import { getSupabaseAdmin } from "../lib/supabase";
-import { findTeam, getTeamFixtures } from "../lib/api-football";
+import { findPlayer, findTeam, getTeamFixtures } from "../lib/api-football";
 
 function dateValue(value: any): string | null {
   if (!value) return null;
@@ -157,7 +157,7 @@ function formatUKTime(
   ).format(parsed);
 }
 
-function formatBangladeshTime(
+function formatChileTime(
   value: any
 ): string {
   const date =
@@ -183,7 +183,7 @@ function formatBangladeshTime(
       minute: "2-digit",
       hour12: false,
       timeZone:
-        "Asia/Dhaka"
+        "America/Santiago"
     }
   ).format(parsed);
 }
@@ -207,10 +207,10 @@ function fixtureTimes(
       </span>
 
       <span>
-        {formatBangladeshTime(
+        {formatChileTime(
           fixture
         )}{" "}
-        (Bangladesh)
+        (Chile)
       </span>
     </div>
   );
@@ -1361,16 +1361,16 @@ function hasComplete1X2(
   );
 }
 
-async function getNextBangladeshFixture() {
+async function getNextChileFixture() {
   try {
-    const teams = await findTeam("Bangladesh");
+    const teams = await findTeam("Chile");
 
     const team =
       teams.find(
         (candidate: any) =>
           String(candidate?.name ?? "")
             .trim()
-            .toLowerCase() === "bangladesh"
+            .toLowerCase() === "chile"
       ) ?? teams[0] ?? null;
 
     if (!team?.id) {
@@ -1386,7 +1386,7 @@ async function getNextBangladeshFixture() {
       : null;
   } catch (error) {
     console.error(
-      "Bangladesh fixture lookup failed:",
+      "Chile fixture lookup failed:",
       error
     );
     return null;
@@ -1863,15 +1863,8 @@ async function getConsensusMatchOdds(
         playerName
       );
 
-    /*
-     * Display fallback: the requested first-goalscorer price is
-     * currently fixed at 29.00 when Betway does not return a price.
-     * This is intentionally a UI fallback, not a live BSD consensus
-     * value. Remove it once a reliable bookmaker feed is connected.
-     */
     const firstGoalScorerPrice =
-      betwayFirstGoalScorer ??
-      29.00;
+      betwayFirstGoalScorer;
 
     return {
       fixtureId,
@@ -1879,7 +1872,7 @@ async function getConsensusMatchOdds(
         getConsensus1X2(
           summaryPayload
         ),
-      hamzaFirstGoalScorer:
+      benFirstGoalScorer:
         firstGoalScorerPrice,
       updatedAt:
         summaryPayload?.last_update_at ??
@@ -1974,6 +1967,29 @@ function appearanceSummary(
 }
 
 export default async function Home() {
+  const debugPlayers =
+    await findPlayer("Ben Brereton");
+
+  const debugChile =
+    await findTeam("Chile");
+
+  console.log(
+    "BEN BSD DEBUG:",
+    JSON.stringify(
+      debugPlayers,
+      null,
+      2
+    )
+  );
+
+  console.log(
+    "CHILE BSD DEBUG:",
+    JSON.stringify(
+      debugChile,
+      null,
+      2
+    )
+  );
   const supabase =
     getSupabaseAdmin();
 
@@ -1995,8 +2011,8 @@ export default async function Home() {
       <main className="page">
         <h1 className="main-heading">
           DID{" "}
-          <span className="hamza-name">
-            HAMZA
+          <span className="ben-name">
+            BEN
           </span>{" "}
           PLAY?
         </h1>
@@ -2076,26 +2092,26 @@ export default async function Home() {
       lastFixture
     );
 
-  const hamzaPlayerId =
+  const benPlayerId =
     Number(
       data.player_id
     );
 
-  const hamzaScored =
+  const benScored =
     events.goals.some(
       (goal: any) =>
         Number(
           goal?.player_id
-        ) === hamzaPlayerId &&
+        ) === benPlayerId &&
         !isOwnGoal(goal)
     );
 
-  const hamzaAssisted =
+  const benAssisted =
     events.assists.some(
       (goal: any) =>
         Number(
           goal?.assist_id
-        ) === hamzaPlayerId
+        ) === benPlayerId
     );
 
   const latestDate =
@@ -2118,15 +2134,15 @@ export default async function Home() {
   const nextDate =
     dateValue(next);
 
-  const nextBangladeshFixture =
-    await getNextBangladeshFixture();
+  const nextChileFixture =
+    await getNextChileFixture();
 
   const nextOdds = next
     ? await getConsensusMatchOdds(
         next,
-        hamzaPlayerId,
+        benPlayerId,
         data.player_name ??
-          "Hamza Choudhury"
+          "Ben Brereton Díaz"
       )
     : null;
 
@@ -2138,19 +2154,19 @@ export default async function Home() {
     firstUpcomingFixture
       ? await getConsensusMatchOdds(
           firstUpcomingFixture,
-          hamzaPlayerId,
+          benPlayerId,
           data.player_name ??
-            "Hamza Choudhury"
+            "Ben Brereton Díaz"
         )
       : null;
 
-  const bangladeshOdds =
-    nextBangladeshFixture
+  const chileOdds =
+    nextChileFixture
       ? await getConsensusMatchOdds(
-          nextBangladeshFixture,
-          hamzaPlayerId,
+          nextChileFixture,
+          benPlayerId,
           data.player_name ??
-            "Hamza Choudhury"
+            "Ben Brereton Díaz"
         )
       : null;
 
@@ -2215,7 +2231,7 @@ export default async function Home() {
         body {
           margin: 0;
           padding: 0;
-          background: #006a4e;
+          background: #0039A6;
           color: #ffffff;
           font-family:
             Arial,
@@ -2247,7 +2263,7 @@ export default async function Home() {
           white-space: nowrap;
         }
 
-        .hamza-name {
+        .ben-name {
           color: #f42a41;
         }
 
@@ -2573,21 +2589,21 @@ export default async function Home() {
         }
 
         .detail-stat-value.yes {
-          color: #006a4e;
+          color: #0039A6;
         }
 
         .detail-stat-value.no {
           color: #f42a41;
         }
 
-        .hamza-outcomes {
+        .ben-outcomes {
           margin-top: 14px;
           border-top:
             1px solid
             #dfe4ea;
         }
 
-        .hamza-outcome {
+        .ben-outcome {
           display: flex;
           align-items: baseline;
           justify-content: space-between;
@@ -2600,11 +2616,11 @@ export default async function Home() {
           font-weight: 800;
         }
 
-        .hamza-outcome:last-child {
+        .ben-outcome:last-child {
           border-bottom: 0;
         }
 
-        .hamza-outcome-label {
+        .ben-outcome-label {
           color: #7084a1;
           font-size: 11px;
           font-weight: 900;
@@ -2612,7 +2628,7 @@ export default async function Home() {
           text-transform: uppercase;
         }
 
-        .hamza-outcome-value {
+        .ben-outcome-value {
           font-weight: 900;
         }
 
@@ -3184,8 +3200,8 @@ export default async function Home() {
         <div className="top-row">
           <h1 className="main-heading">
             DID{" "}
-            <span className="hamza-name">
-              HAMZA
+            <span className="ben-name">
+              BEN
             </span>{" "}
             PLAY?
           </h1>
@@ -3195,13 +3211,13 @@ export default async function Home() {
               className="top-image"
               src={
                 latestPlayed
-                  ? "/hamza-happy.png"
-                  : "/hamza-serious.png"
+                  ? "/ben-happy.png"
+                  : "/ben-serious.png"
               }
               alt={
                 latestPlayed
-                  ? "Happy Hamza Choudhury"
-                  : "Serious Hamza Choudhury"
+                  ? "Happy Ben Brereton Díaz"
+                  : "Serious Ben Brereton Díaz"
               }
             />
           </div>
@@ -3424,24 +3440,24 @@ export default async function Home() {
                 </div>
               </div>
 
-              <div className="hamza-outcomes">
-                <div className="hamza-outcome">
-                  <div className="hamza-outcome-label">
-                    Did Hamza score?
+              <div className="ben-outcomes">
+                <div className="ben-outcome">
+                  <div className="ben-outcome-label">
+                    Did Ben score?
                   </div>
 
-                  <div className="hamza-outcome-value">
-                    {hamzaScored ? "Yes" : "No"}
+                  <div className="ben-outcome-value">
+                    {benScored ? "Yes" : "No"}
                   </div>
                 </div>
 
-                <div className="hamza-outcome">
-                  <div className="hamza-outcome-label">
-                    Did Hamza assist?
+                <div className="ben-outcome">
+                  <div className="ben-outcome-label">
+                    Did Ben assist?
                   </div>
 
-                  <div className="hamza-outcome-value">
-                    {hamzaAssisted ? "Yes" : "No"}
+                  <div className="ben-outcome-value">
+                    {benAssisted ? "Yes" : "No"}
                   </div>
                 </div>
               </div>
@@ -3513,7 +3529,7 @@ export default async function Home() {
         )}
 
         <h2 className="next-heading">
-          WILL HAMZA PLAY NEXT?
+          WILL BEN PLAY NEXT?
         </h2>
 
         <section className="next-card">
@@ -3630,7 +3646,7 @@ export default async function Home() {
 
                     <div className="fixture-time">
                       {date
-                        ? `${formatBangladeshTime(fixture)} (Bangladesh)`
+                        ? `${formatChileTime(fixture)} (Chile)`
                         : ""}
                     </div>
                   </div>
@@ -3693,7 +3709,7 @@ export default async function Home() {
                 Next match odds
               </h3>
               <div className="odds-mini-subtitle">
-                Hamza to score first goal
+                Ben to score first goal
               </div>
               <div className="odds-mini-match">
                 {next
@@ -3702,13 +3718,13 @@ export default async function Home() {
               </div>
 
               {numericPrice(
-                nextOdds?.hamzaFirstGoalScorer
+                nextOdds?.benFirstGoalScorer
               ) !== null ? (
                 <div className="odds-mini-row">
                   <div className="odds-prices">
                     <span>
                       {formatOddsPrice(
-                        nextOdds?.hamzaFirstGoalScorer
+                        nextOdds?.benFirstGoalScorer
                       )}
                     </span>
                   </div>
@@ -3722,39 +3738,39 @@ export default async function Home() {
 
             <div className="odds-mini-card">
               <h3 className="odds-mini-title">
-                Next Bangladesh match odds
+                Next Chile match odds
               </h3>
               <div className="odds-mini-subtitle">
                 1X2
               </div>
               <div className="odds-mini-match">
-                {nextBangladeshFixture
+                {nextChileFixture
                   ? fixtureName(
-                      nextBangladeshFixture
+                      nextChileFixture
                     )
-                  : "No upcoming Bangladesh fixture"}
+                  : "No upcoming Chile fixture"}
               </div>
 
               {hasComplete1X2(
-                bangladeshOdds?.oneXTwo
+                chileOdds?.oneXTwo
               ) ? (
                 <div className="odds-mini-row">
                   <div className="odds-prices">
                     <span>
                       (1) {formatOddsPrice(
-                        bangladeshOdds?.oneXTwo?.home
+                        chileOdds?.oneXTwo?.home
                       )}
                     </span>
                     <span>-</span>
                     <span>
                       (X) {formatOddsPrice(
-                        bangladeshOdds?.oneXTwo?.draw
+                        chileOdds?.oneXTwo?.draw
                       )}
                     </span>
                     <span>-</span>
                     <span>
                       (2) {formatOddsPrice(
-                        bangladeshOdds?.oneXTwo?.away
+                        chileOdds?.oneXTwo?.away
                       )}
                     </span>
                   </div>
@@ -3768,27 +3784,27 @@ export default async function Home() {
 
             <div className="odds-mini-card">
               <h3 className="odds-mini-title">
-                Next Bangladesh match odds
+                Next Chile match odds
               </h3>
               <div className="odds-mini-subtitle">
-                Hamza to score first goal
+                Ben to score first goal
               </div>
               <div className="odds-mini-match">
-                {nextBangladeshFixture
+                {nextChileFixture
                   ? fixtureName(
-                      nextBangladeshFixture
+                      nextChileFixture
                     )
-                  : "No upcoming Bangladesh fixture"}
+                  : "No upcoming Chile fixture"}
               </div>
 
               {numericPrice(
-                bangladeshOdds?.hamzaFirstGoalScorer
+                chileOdds?.benFirstGoalScorer
               ) !== null ? (
                 <div className="odds-mini-row">
                   <div className="odds-prices">
                     <span>
                       {formatOddsPrice(
-                        bangladeshOdds?.hamzaFirstGoalScorer
+                        chileOdds?.benFirstGoalScorer
                       )}
                     </span>
                   </div>
@@ -3808,30 +3824,33 @@ export default async function Home() {
 
         <section className="bio-card">
           <h2 className="bio-heading">
-            ABOUT HAMZA CHOUDHURY
+            ABOUT BEN BRERETON DÍAZ
           </h2>
 
           <div className="bio-content">
             <img
               className="bio-photo"
-              src="/hamza-bio.jpg"
-              alt="Hamza Choudhury"
+              src={
+                data.player_photo ??
+                "/ben-bio.jpg"
+              }
+              alt="Ben Brereton Díaz"
             />
 
             <p>
-              Hamza Dewan Choudhury is a professional footballer. Born in England to a Bangladeshi mother and a father from Grenada, he was raised in a traditional Bangladeshi Muslim household. His ancestral home is in Bahubal, Habiganj District, Sylhet.
+              Ben Brereton Díaz is a professional footballer who plays as a forward and represents Chile at international level. He is currently with Sheffield United.
             </p>
 
             <p>
-              Born on 1 October 1997, Hamza began playing football at a very young age. He joined the Leicester City Academy at just seven years old, and by 2015, he had broken into the first-team squad. There, he attracted attention from several major European clubs.
+              Born in England, Brereton Díaz came through the Nottingham Forest academy before establishing himself in senior football. His club career has included spells in England and abroad.
             </p>
 
             <p>
-              He made 123 league appearances for the Foxes and enjoyed successful loan spells at Burton Albion, Watford and Sheffield United. In 2026, he made his move to the Blades permanent, signing a one-year contract.
+              Brereton Díaz has represented Chile in senior international football and remains part of La Roja's squad.
             </p>
 
             <p>
-              Hamza was eligible to play for England and Grenada. In fact, he turned out for England’s under-21 side on no fewer than seven occasions. However, in August 2024, he obtained a Bangladeshi passport and switched his allegiance in December. Hamza then made his debut for the Tigers in March 2025, scoring his first goal in June of the same year in a 2–0 win over Bhutan.
+              This site tracks his Sheffield United and Chile fixtures, squad status, appearances and match information.
             </p>
           </div>
         </section>
@@ -3848,13 +3867,13 @@ export default async function Home() {
                   hour: "2-digit",
                   minute: "2-digit",
                   timeZone:
-                    "Asia/Dhaka"
+                    "America/Santiago"
                 }
               ).format(
                 new Date(
                   data.updated_at
                 )
-              )} (Bangladesh Time)`
+              )} (Chile Time)`
             : ""}
         </div>
       </main>
