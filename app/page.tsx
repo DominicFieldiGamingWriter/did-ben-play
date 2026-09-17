@@ -3,17 +3,17 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Did Ben Brereton Díaz Play?",
   description:
-    "Did Ben Brereton Díaz play for Sheffield United or Chile? Check his latest appearance, next match, fixtures and odds.",
+    "Did Ben Brereton Díaz play in his last match for club or country? Find out whether Big Ben started, was on the bench, scored or assisted in his latest game.",
   openGraph: {
     title: "Did Ben Brereton Díaz Play?",
     description:
-      "Did Ben Brereton Díaz play for Sheffield United or Chile? Check his latest appearance, next match, fixtures and odds.",
+      "Did Ben Brereton Díaz play in his last match for club or country? Find out whether Big Ben started, was on the bench, scored or assisted in his latest game.",
   },
   twitter: {
     card: "summary_large_image",
     title: "Did Ben Brereton Díaz Play?",
     description:
-      "Did Ben Brereton Díaz play for Sheffield United or Chile? Check his latest appearance, next match, fixtures and odds.",
+      "Did Ben Brereton Díaz play in his last match for club or country? Find out whether Big Ben started, was on the bench, scored or assisted in his latest game.",
   },
 };
 import { getSupabaseAdmin } from "../lib/supabase";
