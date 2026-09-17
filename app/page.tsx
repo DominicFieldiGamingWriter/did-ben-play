@@ -2714,7 +2714,7 @@ export default async function Home() {
           height: 108px;
           padding: 0 42px;
           border-radius: 999px;
-          background: #e8eef6;
+          background: #ffffff;
           font-size: 65px;
           line-height: 1;
           font-weight: 900;
@@ -2768,9 +2768,13 @@ export default async function Home() {
 
         .live-card {
           background: #111a29;
-          border-top: 5px solid #d52b1e;
+          border: 1px solid #8fc3f4;
           border-radius: 30px;
           padding: 34px;
+        }
+
+        .live-card .section-label {
+          color: #c7d8ea;
         }
 
         .live-card-inner {
@@ -2797,7 +2801,7 @@ export default async function Home() {
 
         .live-date {
           margin-top: 13px;
-          color: #aab8cb;
+          color: #c7d8ea;
           font-size: 15px;
         }
 
@@ -2806,7 +2810,7 @@ export default async function Home() {
           gap: 20px;
           flex-wrap: wrap;
           margin-top: 6px;
-          color: #aab8cb;
+          color: #c7d8ea;
           font-size: 15px;
           font-weight: 800;
         }
@@ -3079,6 +3083,11 @@ export default async function Home() {
           line-height: 1;
           font-weight: 900;
           letter-spacing: -1.5px;
+        }
+
+        .next-card > .match-date,
+        .next-card > .times {
+          color: #c7d8ea;
         }
 
         .availability {
