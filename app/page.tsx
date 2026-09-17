@@ -1,6 +1,22 @@
 export const dynamic = "force-dynamic";
+
+export const metadata = {
+  title: "Did Ben Brereton Díaz Play?",
+  description:
+    "Did Ben Brereton Díaz play for Sheffield United or Chile? Check his latest appearance, next match, fixtures and odds.",
+  openGraph: {
+    title: "Did Ben Brereton Díaz Play?",
+    description:
+      "Did Ben Brereton Díaz play for Sheffield United or Chile? Check his latest appearance, next match, fixtures and odds.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Did Ben Brereton Díaz Play?",
+    description:
+      "Did Ben Brereton Díaz play for Sheffield United or Chile? Check his latest appearance, next match, fixtures and odds.",
+  },
+};
 import { getSupabaseAdmin } from "../lib/supabase";
-import { findPlayer, findTeam, getTeamFixtures } from "../lib/api-football";
 
 function dateValue(value: any): string | null {
   if (!value) return null;
@@ -1361,36 +1377,43 @@ function hasComplete1X2(
   );
 }
 
-async function getNextChileFixture() {
-  try {
-    const teams = await findTeam("Chile");
+function isChileFixture(fixture: any): boolean {
+  const type = String(
+    fixture?.tracked_team_type ??
+      fixture?.team_type ??
+      fixture?.fixture_type ??
+      ""
+  ).toLowerCase();
 
-    const team =
-      teams.find(
-        (candidate: any) =>
-          String(candidate?.name ?? "")
-            .trim()
-            .toLowerCase() === "chile"
-      ) ?? teams[0] ?? null;
-
-    if (!team?.id) {
-      return null;
-    }
-
-    const fixtures = await getTeamFixtures(
-      Number(team.id)
-    );
-
-    return Array.isArray(fixtures?.next)
-      ? fixtures.next[0] ?? null
-      : null;
-  } catch (error) {
-    console.error(
-      "Chile fixture lookup failed:",
-      error
-    );
-    return null;
+  if (type === "national") {
+    return true;
   }
+
+  const trackedName = String(
+    fixture?.tracked_team_name ??
+      fixture?.team_name ??
+      ""
+  ).toLowerCase();
+
+  if (trackedName.includes("chile")) {
+    return true;
+  }
+
+  const homeName = String(
+    fixture?.home_name ??
+      fixture?.home_team_name ??
+      fixture?.home?.name ??
+      ""
+  ).toLowerCase();
+
+  const awayName = String(
+    fixture?.away_name ??
+      fixture?.away_team_name ??
+      fixture?.away?.name ??
+      ""
+  ).toLowerCase();
+
+  return homeName === "chile" || awayName === "chile";
 }
 
 function betwayCandidateEventIds(fixture: any): number[] {
@@ -1741,72 +1764,80 @@ async function fetchBetwayFirstGoalScorer(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36"
   };
 
-  for (const host of hosts) {
-    for (const fixtureId of candidateIds) {
-      for (const marketCName of marketNames) {
-        for (const useExternalIds of [
-          false,
-          true
-        ]) {
-          for (const jurisdictionId of [
-            1,
-            2
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
+  try {
+    for (const host of hosts) {
+      for (const fixtureId of candidateIds) {
+        for (const marketCName of marketNames) {
+          for (const useExternalIds of [
+            false,
+            true
           ]) {
-            try {
-              const response =
-                await fetch(
-                  `${host}/api/Events/V2/GetEvents`,
-                  {
-                    method: "POST",
-                    headers,
-                    body: JSON.stringify(
-                      betwayRequestPayload(
-                        fixtureId,
-                        marketCName,
-                        useExternalIds,
-                        jurisdictionId
-                      )
-                    ),
-                    cache: "no-store"
-                  }
-                );
+            for (const jurisdictionId of [
+              1,
+              2
+            ]) {
+              try {
+                const response =
+                  await fetch(
+                    `${host}/api/Events/V2/GetEvents`,
+                    {
+                      method: "POST",
+                      headers,
+                      body: JSON.stringify(
+                        betwayRequestPayload(
+                          fixtureId,
+                          marketCName,
+                          useExternalIds,
+                          jurisdictionId
+                        )
+                      ),
+                      cache: "no-store",
+                      signal: controller.signal
+                    }
+                  );
 
-              if (!response.ok) {
+                if (!response.ok) {
+                  console.warn(
+                    `Betway first-scorer request failed (${response.status}) host=${host} fixture=${fixtureId} market=${marketCName} external=${useExternalIds} jurisdiction=${jurisdictionId}`
+                  );
+                  continue;
+                }
+
+                const payload =
+                  await response.json();
+
+                const price =
+                  extractFirstGoalScorerPriceFromBetway(
+                    payload,
+                    playerId,
+                    playerName
+                  );
+
+                if (price !== null) {
+                  console.info(
+                    `Betway first-scorer price found: ${price} fixture=${fixtureId} market=${marketCName} external=${useExternalIds} jurisdiction=${jurisdictionId}`
+                  );
+                  return price;
+                }
+              } catch (error) {
                 console.warn(
-                  `Betway first-scorer request failed (${response.status}) host=${host} fixture=${fixtureId} market=${marketCName} external=${useExternalIds} jurisdiction=${jurisdictionId}`
+                  "Betway first-scorer request error:",
+                  error
                 );
-                continue;
               }
-
-              const payload =
-                await response.json();
-
-              const price =
-                extractFirstGoalScorerPriceFromBetway(
-                  payload,
-                  playerId,
-                  playerName
-                );
-
-              if (price !== null) {
-                console.info(
-                  `Betway first-scorer price found: ${price} fixture=${fixtureId} market=${marketCName} external=${useExternalIds} jurisdiction=${jurisdictionId}`
-                );
-                return price;
-              }
-            } catch (error) {
-              console.warn(
-                "Betway first-scorer request error:",
-                error
-              );
             }
           }
         }
       }
     }
-  }
 
-  return null;
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function getConsensusMatchOdds(
@@ -1833,35 +1864,36 @@ async function getConsensusMatchOdds(
       Authorization: `Token ${apiKey}`
     };
 
-    const summaryResponse =
-      await fetch(
-        `https://sports.bzzoiro.com/api/v2/events/${fixtureId}/odds/`,
-        {
-          headers,
-          next: {
-            revalidate: 60
+    const [summaryPayload, betwayFirstGoalScorer] =
+      await Promise.all([
+        (async () => {
+          const summaryResponse =
+            await fetch(
+              `https://sports.bzzoiro.com/api/v2/events/${fixtureId}/odds/`,
+              {
+                headers,
+                next: {
+                  revalidate: 60
+                }
+              }
+            );
+
+          if (!summaryResponse.ok) {
+            console.error(
+              "Consensus odds summary request failed:",
+              summaryResponse.status
+            );
+            return null;
           }
-        }
-      );
 
-    const summaryPayload =
-      summaryResponse.ok
-        ? await summaryResponse.json()
-        : null;
-
-    if (!summaryResponse.ok) {
-      console.error(
-        "Consensus odds summary request failed:",
-        summaryResponse.status
-      );
-    }
-
-    const betwayFirstGoalScorer =
-      await fetchBetwayFirstGoalScorer(
-        fixture,
-        playerId,
-        playerName
-      );
+          return await summaryResponse.json();
+        })(),
+        fetchBetwayFirstGoalScorer(
+          fixture,
+          playerId,
+          playerName
+        )
+      ]);
 
     const firstGoalScorerPrice =
       betwayFirstGoalScorer;
@@ -1967,29 +1999,6 @@ function appearanceSummary(
 }
 
 export default async function Home() {
-  const debugPlayers =
-    await findPlayer("Ben Brereton");
-
-  const debugChile =
-    await findTeam("Chile");
-
-  console.log(
-    "BEN BSD DEBUG:",
-    JSON.stringify(
-      debugPlayers,
-      null,
-      2
-    )
-  );
-
-  console.log(
-    "CHILE BSD DEBUG:",
-    JSON.stringify(
-      debugChile,
-      null,
-      2
-    )
-  );
   const supabase =
     getSupabaseAdmin();
 
@@ -2135,40 +2144,56 @@ export default async function Home() {
     dateValue(next);
 
   const nextChileFixture =
-    await getNextChileFixture();
-
-  const nextOdds = next
-    ? await getConsensusMatchOdds(
-        next,
-        benPlayerId,
-        data.player_name ??
-          "Ben Brereton Díaz"
-      )
-    : null;
+    nextFixtures.find(
+      (fixture: any) =>
+        isChileFixture(fixture)
+    ) ?? null;
 
   const firstUpcomingFixture =
     upcomingFixtures[0] ??
     null;
 
-  const firstUpcomingOdds =
-    firstUpcomingFixture
-      ? await getConsensusMatchOdds(
-          firstUpcomingFixture,
-          benPlayerId,
-          data.player_name ??
-            "Ben Brereton Díaz"
-        )
-      : null;
+  const playerName =
+    data.player_name ??
+    "Ben Brereton Díaz";
 
-  const chileOdds =
-    nextChileFixture
-      ? await getConsensusMatchOdds(
-          nextChileFixture,
-          benPlayerId,
-          data.player_name ??
-            "Ben Brereton Díaz"
-        )
-      : null;
+  const oddsCache =
+    new Map<number, Promise<any>>();
+
+  const getOdds = (fixture: any) => {
+    if (!fixture) {
+      return Promise.resolve(null);
+    }
+
+    const fixtureId = Number(fixture?.id);
+
+    if (!Number.isFinite(fixtureId)) {
+      return Promise.resolve(null);
+    }
+
+    const cached = oddsCache.get(fixtureId);
+
+    if (cached) {
+      return cached;
+    }
+
+    const request = getConsensusMatchOdds(
+      fixture,
+      benPlayerId,
+      playerName
+    );
+
+    oddsCache.set(fixtureId, request);
+
+    return request;
+  };
+
+  const [nextOdds, firstUpcomingOdds, chileOdds] =
+    await Promise.all([
+      getOdds(next),
+      getOdds(firstUpcomingFixture),
+      getOdds(nextChileFixture)
+    ]);
 
   const appearanceSummaryText =
     appearanceSummary(
@@ -2281,8 +2306,8 @@ export default async function Home() {
         }
 
         .top-image {
-          width: 92px;
-          height: 92px;
+          width: 108px;
+          height: 108px;
           display: block;
           object-fit: contain;
           object-position: center;
@@ -3222,6 +3247,11 @@ export default async function Home() {
                   ? "Happy Ben Brereton Díaz"
                   : "Serious Ben Brereton Díaz"
               }
+              width={108}
+              height={108}
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
             />
           </div>
 
@@ -3833,27 +3863,32 @@ export default async function Home() {
           <div className="bio-content">
             <img
               className="bio-photo"
-              src={
-                data.player_photo ??
-                "/ben-bio.jpg"
-              }
+              src="/ben-bio.jpg"
               alt="Ben Brereton Díaz"
             />
 
             <p>
-              Ben Brereton Díaz is a professional footballer who plays as a forward and represents Chile at international level. He is currently with Sheffield United.
+              Ben Brereton Díaz is a professional footballer. Born in Stoke, his father is an Englishman, but his mother is from Concepción in Chile.
             </p>
 
             <p>
-              Born in England, Brereton Díaz came through the Nottingham Forest academy before establishing himself in senior football. His club career has included spells in England and abroad.
+              Originally in the Manchester United youth academy, Díaz later played junior football for Stoke, then Nottingham Forest. It was at the City Ground where he made his first-team debut, before transferring to Blackburn Rovers, where he scored 45 goals in 144 league games.
             </p>
 
             <p>
-              Brereton Díaz has represented Chile in senior international football and remains part of La Roja's squad.
+              An unsuccessful move to Villarreal followed, before Sheffield United gave Díaz an escape route on loan. He later moved to Southampton, after the Blades were relegated from the Premier League. But Díaz would soon play for them again, rejoining on loan in 2025.
             </p>
 
             <p>
-              This site tracks his Sheffield United and Chile fixtures, squad status, appearances and match information.
+              A season on loan at Derby County yielded seven league goals from 40 league appearances, before Díaz opted to join Sheffield United for a third loan spell in 2026.
+            </p>
+
+            <p>
+              Born Benjamin Anthony Brereton, the talented attacker adopted his mother’s name in later life. He actually earned a combined 19 caps for the England Under-19 and Under-20 sides, before switching allegiance to La Roja in 2021.
+            </p>
+
+            <p>
+              The inclusion of Díaz in the Chile national squad came about thanks to a group of <em>Football Manager</em> players. They noticed his dual nationality in the game and called for him to be selected. The social media campaign took off, and the rest is history.
             </p>
           </div>
         </section>
