@@ -2231,7 +2231,7 @@ export default async function Home() {
         body {
           margin: 0;
           padding: 0;
-          background: #f7f9fc;
+          background: #eef2f7;
           color: #111a29;
           font-family:
             Arial,
@@ -2301,7 +2301,7 @@ export default async function Home() {
           height: 108px;
           padding: 0 42px;
           border-radius: 999px;
-          background: #ffffff;
+          background: #e8eef6;
           font-size: 65px;
           line-height: 1;
           font-weight: 900;
@@ -2309,7 +2309,7 @@ export default async function Home() {
         }
 
         .answer.yes {
-          color: #00824f;
+          color: #0039A6;
         }
 
         .answer.no {
@@ -2592,7 +2592,7 @@ export default async function Home() {
         }
 
         .detail-stat-value.yes {
-          color: #00824f;
+          color: #0039A6;
         }
 
         .detail-stat-value.no {
