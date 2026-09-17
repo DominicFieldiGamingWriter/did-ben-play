@@ -2801,7 +2801,7 @@ export default async function Home() {
         .section-card {
           margin-top: 30px;
           background: #ffffff;
-          border: 1px solid #e3e8ee;
+          border: 1px solid #d52b1e;
           box-shadow: 0 10px 30px rgba(17, 26, 41, .06);
           color: #090d13;
           border-radius: 30px;
@@ -3028,7 +3028,7 @@ export default async function Home() {
 
         .next-card {
           background: #111a29;
-          border-top: 5px solid #0039A6;
+          border: 1px solid #0039A6;
           border-radius: 30px;
           padding: 34px;
         }
@@ -3087,7 +3087,7 @@ export default async function Home() {
         .fixtures-card {
           margin-top: 24px;
           background: #ffffff;
-          border: 1px solid #e3e8ee;
+          border: 1px solid #d52b1e;
           box-shadow: 0 10px 30px rgba(17, 26, 41, .06);
           color: #090d13;
           border-radius: 30px;
@@ -3144,7 +3144,7 @@ export default async function Home() {
         .bio-card {
           margin-top: 24px;
           background: #ffffff;
-          border: 1px solid #e3e8ee;
+          border: 1px solid #d52b1e;
           box-shadow: 0 10px 30px rgba(17, 26, 41, .06);
           color: #090d13;
           border-radius: 30px;
@@ -3194,7 +3194,7 @@ export default async function Home() {
         .odds-card {
           margin-top: 24px;
           background: #111a29;
-          border-top: 5px solid #d52b1e;
+          border: 1px solid #0039A6;
           color: #ffffff;
           border-radius: 30px;
           padding: 34px;
