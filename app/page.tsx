@@ -1680,26 +1680,20 @@ function collectOneXBetEventCandidates(
   return results;
 }
 
-type OneXBetQueryParams = Record<string, string | number | undefined>;
-
 async function fetch1xBetJson(
   path: string,
-  params: OneXBetQueryParams,
+  params: Record<string, string | number>,
   signal: AbortSignal
 ): Promise<any | null> {
   const bases = [
-    "https://1xbet.com/service-api/LiveFeed/",
-    "https://1xbet.com/service-api/LineFeed/",
-    "https://1xbet.com/LiveFeed/",
-    "https://1xbet.com/LineFeed/"
+    "https://1xbet.com/LineFeed/",
+    "https://1xbet.com/service-api/LineFeed/"
   ];
 
   const query = new URLSearchParams();
 
   for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined) {
-      query.set(key, String(value));
-    }
+    query.set(key, String(value));
   }
 
   for (const base of bases) {
@@ -1739,144 +1733,105 @@ async function fetch1xBetJson(
   return null;
 }
 
-async function find1xBetEventIds(
+async function find1xBetEventId(
   fixture: any,
   signal: AbortSignal
-): Promise<number[]> {
+): Promise<number | null> {
   const directIds =
     oneXBetCandidateEventIds(fixture);
 
-  const results = [...directIds];
+  if (directIds.length) {
+    return directIds[0];
+  }
+
   const home = teamName(fixture, "home");
   const away = teamName(fixture, "away");
   const searchText = `${home} ${away}`.trim();
 
-  if (searchText) {
-    const searches: Array<{
-      path: string;
-      params: OneXBetQueryParams;
-    }> = [
-      {
-        path: "Web_SearchZip",
-        params: {
-          text: searchText,
-          limit: 50,
-          lng: "en"
-        }
-      },
-      {
-        path: "Get1x2_VZip",
-        params: {
-          sports: 1,
-          count: 250,
-          lng: "en",
-          tf: 0,
-          tz: 0,
-          mode: 4,
-          country: 1,
-          partner: 51,
-          getEmpty: "true"
-        }
-      },
-      {
-        path: "Get1x2_VZip",
-        params: {
-          sports: 1,
-          count: 250,
-          lng: "en",
-          tf: 0,
-          tz: 0,
-          mode: 4,
-          country: 1,
-          getEmpty: "true"
-        }
-      }
-    ];
+  if (!searchText) {
+    return null;
+  }
 
-    for (const search of searches) {
-      const payload = await fetch1xBetJson(
-        search.path,
-        search.params,
-        signal
-      );
+  const payload = await fetch1xBetJson(
+    "Web_SearchZip",
+    {
+      text: searchText,
+      limit: 50,
+      lng: "en"
+    },
+    signal
+  );
 
-      if (!payload) {
-        continue;
-      }
+  if (!payload) {
+    return null;
+  }
 
-      const candidates =
-        collectOneXBetEventCandidates(payload);
+  const candidates =
+    collectOneXBetEventCandidates(
+      payload
+    );
 
-      const fixtureTime = fixtureTimestamp(
+  const fixtureTime = fixtureTimestamp(
+    fixture
+  );
+
+  const ranked = candidates
+    .map((candidate) => {
+      const baseScore = oneXBetEventMatchScore(
+        candidate.node,
         fixture
       );
 
-      const ranked = candidates
-        .map((candidate) => {
-          const baseScore =
-            oneXBetEventMatchScore(
-              candidate.node,
-              fixture
+      const distance =
+        fixtureTime && candidate.eventTime
+          ? Math.abs(
+              fixtureTime -
+                candidate.eventTime
+            )
+          : Number.MAX_SAFE_INTEGER;
+
+      const timeBonus =
+        distance === Number.MAX_SAFE_INTEGER
+          ? 0
+          : Math.max(
+              0,
+              150 -
+                Math.round(
+                  distance /
+                    (60 * 60 * 1000)
+                )
             );
 
-          const distance =
-            fixtureTime && candidate.eventTime
-              ? Math.abs(
-                  fixtureTime -
-                    candidate.eventTime
-                )
-              : Number.MAX_SAFE_INTEGER;
-
-          const timeBonus =
-            distance === Number.MAX_SAFE_INTEGER
-              ? 0
-              : Math.max(
-                  0,
-                  150 -
-                    Math.round(
-                      distance /
-                        (60 * 60 * 1000)
-                    )
-                );
-
-          return {
-            ...candidate,
-            score:
-              baseScore + timeBonus,
-            distance
-          };
-        })
-        .sort((a, b) => {
-          if (b.score !== a.score) {
-            return b.score - a.score;
-          }
-          return a.distance - b.distance;
-        });
-
-      for (const candidate of ranked.slice(0, 6)) {
-        if (
-          oneXBetEventMatchScore(
-            candidate.node,
-            fixture
-          ) >= 700
-        ) {
-          results.push(candidate.eventId);
-        }
+      return {
+        ...candidate,
+        score:
+          baseScore + timeBonus,
+        distance
+      };
+    })
+    .sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
       }
-    }
+
+      return a.distance - b.distance;
+    });
+
+  const best = ranked[0];
+
+  if (!best || oneXBetEventMatchScore(best.node, fixture) < 700) {
+    console.warn(
+      `1XBET event not found for ${home} vs ${away}`
+    );
+    return null;
   }
 
-  return Array.from(
-    new Set(
-      results.filter(
-        (value) =>
-          Number.isFinite(Number(value)) &&
-          Number(value) > 0
-      )
-    )
+  console.info(
+    `1XBET event matched: ${best.eventId} for ${home} vs ${away}`
   );
-}
 
+  return best.eventId;
+}
 
 function extractOneXBetNodeText(
   node: any
@@ -1886,7 +1841,6 @@ function extractOneXBetNodeText(
   }
 
   const values = [
-    ...Object.keys(node),
     node?.G,
     node?.g,
     node?.N,
@@ -1977,9 +1931,7 @@ function oneXBetPlayerMatches(
     node?.PID,
     node?.selection?.player_id,
     node?.selection?.playerId,
-    node?.selection?.PlayerId,
-    node?.selection?.player?.id,
-    node?.selection?.player?.player_id
+    node?.selection?.PlayerId
   ];
 
   if (
@@ -1990,72 +1942,34 @@ function oneXBetPlayerMatches(
     return true;
   }
 
-  const parts = String(playerName ?? "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-
-  const aliases = new Set<string>();
-
-  if (playerName) {
-    aliases.add(normaliseToken(playerName));
-  }
-
-  if (parts.length >= 1) {
-    aliases.add(
-      normaliseToken(parts[parts.length - 1])
-    );
-  }
-
-  if (parts.length >= 2) {
-    const firstName = normaliseToken(parts[0]);
-    const mainSurname = normaliseToken(
-      parts[parts.length - 2]
-    );
-
-    if (firstName && mainSurname) {
-      aliases.add(`${firstName}${mainSurname}`);
-    }
-
-    if (mainSurname.length >= 5) {
-      aliases.add(mainSurname);
-    }
-  }
-
+  const wanted = normaliseToken(
+    playerName
+  );
+  const surnameToken = normaliseToken(
+    surname(playerName)
+  );
   const nodeText = normaliseToken(
     extractOneXBetPlayerText(node)
   );
-
-  const keyTokens = Object.keys(node).map(
-    normaliseToken
-  );
-
-  if (
-    keyTokens.some(
-      (keyToken) =>
-        keyToken === String(playerId) ||
-        Array.from(aliases).some(
-          (alias) =>
-            alias &&
-            alias.length >= 5 &&
-            (keyToken === alias ||
-              keyToken.includes(alias))
-        )
-    )
-  ) {
-    return true;
-  }
 
   if (!nodeText) {
     return false;
   }
 
-  return Array.from(aliases).some(
-    (alias) =>
-      alias &&
-      alias.length >= 5 &&
-      (nodeText === alias ||
-        nodeText.includes(alias))
+  if (wanted && nodeText === wanted) {
+    return true;
+  }
+
+  if (
+    surnameToken &&
+    nodeText === surnameToken
+  ) {
+    return true;
+  }
+
+  return (
+    surnameToken.length >= 5 &&
+    nodeText.includes(surnameToken)
   );
 }
 
@@ -2230,88 +2144,54 @@ async function fetch1xBetFirstGoalScorer(
   const controller = new AbortController();
   const timeout = setTimeout(
     () => controller.abort(),
-    20000
+    5000
   );
 
   try {
-    const eventIds =
-      await find1xBetEventIds(
-        fixture,
-        controller.signal
-      );
+    const eventId = await find1xBetEventId(
+      fixture,
+      controller.signal
+    );
 
-    if (!eventIds.length) {
-      console.info(
-        `1XBET event not found for ${fixtureName(fixture)}`
-      );
+    if (!eventId) {
       return null;
     }
 
-    const profiles: OneXBetQueryParams[] = [
+    const payload = await fetch1xBetJson(
+      "GetGameZip",
       {
-        lng: "en",
-        cfview: 0,
-        isSubGames: "true",
-        GroupEvents: "true",
-        allEventsGroupSubGames: "true",
-        countevents: 250,
-        partner: 51,
-        grMode: 2
-      },
-      {
-        lng: "en",
-        cfview: 0,
-        isSubGames: "true",
-        GroupEvents: "true",
-        allEventsGroupSubGames: "true",
-        countevents: 250
-      },
-      {
+        id: eventId,
         lng: "en",
         cfview: 0,
         isSubGames: "true",
         GroupEvents: "true",
         countevents: 250
-      }
-    ];
+      },
+      controller.signal
+    );
 
-    for (const eventId of eventIds) {
-      for (const profile of profiles) {
-        const payload = await fetch1xBetJson(
-          "GetGameZip",
-          {
-            id: eventId,
-            ...profile
-          },
-          controller.signal
-        );
+    const price =
+      extractFirstGoalScorerPriceFrom1xBet(
+        payload,
+        playerId,
+        playerName
+      );
 
-        const price =
-          extractFirstGoalScorerPriceFrom1xBet(
-            payload,
-            playerId,
-            playerName
-          );
-
-        if (price !== null) {
-          console.info(
-            `1XBET first-scorer price found: ${price} fixture=${eventId}`
-          );
-          return price;
-        }
-      }
-
+    if (price !== null) {
+      console.info(
+        `1XBET first-scorer price found: ${price} fixture=${eventId}`
+      );
+    } else {
       console.info(
         `1XBET first-scorer price not found for fixture=${eventId}`
       );
     }
 
-    return null;
+    return price;
   } finally {
     clearTimeout(timeout);
   }
 }
-
 
 async function getConsensusMatchOdds(
   fixture: any,
@@ -2463,8 +2343,8 @@ function appearanceSummary(
   ) {
     return (
       minutes !== null
-        ? `Didn't start. Subbed on. Played ${minutes} mins.`
-        : "Didn't start. Subbed on."
+        ? `Didn't start. Sub in. Played ${minutes} mins.`
+        : "Didn't start. Sub in."
     );
   }
 
@@ -2853,10 +2733,13 @@ export default async function Home() {
 
         .live-card {
           background: #111a29;
-          border: 1px solid #9fd3ff;
-          border-top: 5px solid #d52b1e;
+          border: 1px solid #8fc3f4;
           border-radius: 30px;
           padding: 34px;
+        }
+
+        .live-card .section-label {
+          color: #c7d8ea;
         }
 
         .live-card-inner {
@@ -2866,10 +2749,6 @@ export default async function Home() {
             minmax(220px, 300px);
           gap: 30px;
           align-items: center;
-        }
-
-        .live-card .section-label {
-          color: #bcd4eb;
         }
 
         .live-title {
@@ -2887,7 +2766,7 @@ export default async function Home() {
 
         .live-date {
           margin-top: 13px;
-          color: #d6e7f7;
+          color: #c7d8ea;
           font-size: 15px;
         }
 
@@ -2896,7 +2775,7 @@ export default async function Home() {
           gap: 20px;
           flex-wrap: wrap;
           margin-top: 6px;
-          color: #d6e7f7;
+          color: #c7d8ea;
           font-size: 15px;
           font-weight: 800;
         }
@@ -2926,7 +2805,7 @@ export default async function Home() {
         .section-card {
           margin-top: 30px;
           background: #ffffff;
-          border: 1px solid #e3e8ee;
+          border: 1px solid #d52b1e;
           box-shadow: 0 10px 30px rgba(17, 26, 41, .06);
           color: #090d13;
           border-radius: 30px;
@@ -3153,13 +3032,13 @@ export default async function Home() {
 
         .next-card {
           background: #111a29;
-          border-top: 5px solid #0039A6;
+          border: 1px solid #0039A6;
           border-radius: 30px;
           padding: 34px;
         }
 
         .next-card .section-label {
-          color: #bcd4eb;
+          color: #c7d8ea;
         }
 
         .next-title {
@@ -3175,12 +3054,9 @@ export default async function Home() {
           letter-spacing: -1.5px;
         }
 
-        .next-card > .match-date {
-          color: #d6e7f7;
-        }
-
+        .next-card > .match-date,
         .next-card > .times {
-          color: #d6e7f7;
+          color: #c7d8ea;
         }
 
         .availability {
@@ -3225,7 +3101,7 @@ export default async function Home() {
         .fixtures-card {
           margin-top: 24px;
           background: #ffffff;
-          border: 1px solid #e3e8ee;
+          border: 1px solid #d52b1e;
           box-shadow: 0 10px 30px rgba(17, 26, 41, .06);
           color: #090d13;
           border-radius: 30px;
@@ -3282,7 +3158,7 @@ export default async function Home() {
         .bio-card {
           margin-top: 24px;
           background: #ffffff;
-          border: 1px solid #e3e8ee;
+          border: 1px solid #d52b1e;
           box-shadow: 0 10px 30px rgba(17, 26, 41, .06);
           color: #090d13;
           border-radius: 30px;
@@ -3332,7 +3208,7 @@ export default async function Home() {
         .odds-card {
           margin-top: 24px;
           background: #111a29;
-          border-top: 5px solid #d52b1e;
+          border: 1px solid #0039A6;
           color: #ffffff;
           border-radius: 30px;
           padding: 34px;
@@ -3478,6 +3354,7 @@ export default async function Home() {
         .error-card {
           margin-top: 28px;
           background: #ffffff;
+          border: 1px solid #d52b1e;
           color: #090d13;
           border-radius: 24px;
           padding: 25px;
