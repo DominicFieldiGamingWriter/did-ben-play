@@ -3035,6 +3035,7 @@ export default async function Home() {
 
         .next-title {
           margin: 0;
+          color: #ffffff;
           font-size: clamp(
             30px,
             4.4vw,
