@@ -4,7 +4,8 @@ import Script from "next/script";
 
 export const metadata: Metadata = {
   title: "Did Ben Brereton Díaz Play?",
-  description: "Did Ben Brereton Díaz play in his last match for club or country? Find out whether Big Ben started, was on the bench, scored or assisted in his latest game."
+  description:
+    "Did Ben Brereton Díaz play in his last match for club or country? Find out whether Big Ben started, was on the bench, scored or assisted in his latest game."
 };
 
 export default function RootLayout({
@@ -18,7 +19,7 @@ export default function RootLayout({
         {children}
 
         <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-8LPT86SVY1"
+          src="https://www.googletagmanager.com/gtag/js?id=G-4EQ1G5Z9Y7"
           strategy="afterInteractive"
         />
 
@@ -27,7 +28,7 @@ export default function RootLayout({
             window.dataLayer = window.dataLayer || [];
             function gtag(){window.dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', 'G-8LPT86SVY1');
+            gtag('config', 'G-4EQ1G5Z9Y7');
           `}
         </Script>
       </body>
