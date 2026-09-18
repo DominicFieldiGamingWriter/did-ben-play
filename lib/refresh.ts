@@ -1810,57 +1810,6 @@ function isNationalTeam(
   );
 }
 
-async function resolvePlayerTeam(
-  player: any
-) {
-  const directId =
-    playerTeamId(player);
-
-  if (directId > 0) {
-    const directTeam =
-      await getTeamById(directId);
-
-    if (directTeam?.id) {
-      return directTeam;
-    }
-  }
-
-  const name =
-    playerTeamName(player);
-
-  if (name) {
-    const teams =
-      await findTeam(name);
-
-    const exact =
-      teams.find(
-        (candidate: any) =>
-          String(
-            candidate?.name ?? ""
-          )
-            .trim()
-            .toLowerCase() ===
-          name.toLowerCase()
-      ) ?? teams[0];
-
-    if (exact?.id) {
-      return exact;
-    }
-  }
-
-  return null;
-}
-
-function playerIdForFallback(
-  player: any
-): number {
-  return Number(
-    player?.id ??
-    player?.player_id ??
-    0
-  );
-}
-
 async function resolvePlayerNationalTeam(
   player: any
 ) {
@@ -1880,17 +1829,15 @@ async function resolvePlayerNationalTeam(
     playerNationalTeamName(player);
 
   /*
-   * BSD may expose Bangladesh as the player's
-   * nationality/country rather than as an explicit
-   * national_team field. For Hamza (player 6135),
-   * Bangladesh is therefore a deliberate fallback.
-   * We still require the returned team to look like a
-   * national side before using it.
+   * BSD may expose the national team directly or expose
+   * the player's national-team name through the player record.
+   * Use the discovered value, with Chile as the BBD-specific
+   * fallback when BSD omits the national-team field.
    */
   const names = [
     discoveredName,
-    playerIdForFallback(player) === 6135
-      ? "Bangladesh"
+    playerId === 6230
+      ? "Chile"
       : ""
   ].filter(
     (value, index, array) =>
@@ -1988,76 +1935,6 @@ function tagFixture(
 }
 
 
-const BANGLADESH_FALLBACK_FIXTURES = [
-  {
-    id: "bd-asean-2026-09-25",
-    date: "2026-09-25T09:00:00+00:00",
-    event_date: "2026-09-25T09:00:00+00:00",
-    status: "notstarted",
-    home_team: { id: 0, name: "Bangladesh" },
-    away_team: { id: 0, name: "Malaysia" },
-    home_score: null,
-    away_score: null,
-    opponent_name: "Malaysia",
-    opponent_id: null,
-    stage_name: "FIFA ASEAN Cup 2026",
-    round_label: "Group A",
-    league_name: "FIFA ASEAN Cup 2026",
-    is_fallback_fixture: true
-  },
-  {
-    id: "bd-asean-2026-09-28",
-    date: "2026-09-28T09:00:00+00:00",
-    event_date: "2026-09-28T09:00:00+00:00",
-    status: "notstarted",
-    home_team: { id: 0, name: "Singapore" },
-    away_team: { id: 0, name: "Bangladesh" },
-    home_score: null,
-    away_score: null,
-    opponent_name: "Singapore",
-    opponent_id: null,
-    stage_name: "FIFA ASEAN Cup 2026",
-    round_label: "Group A",
-    league_name: "FIFA ASEAN Cup 2026",
-    is_fallback_fixture: true
-  },
-  {
-    id: "bd-asean-2026-10-01",
-    date: "2026-10-01T12:30:00+00:00",
-    event_date: "2026-10-01T12:30:00+00:00",
-    status: "notstarted",
-    home_team: { id: 0, name: "Indonesia" },
-    away_team: { id: 0, name: "Bangladesh" },
-    home_score: null,
-    away_score: null,
-    opponent_name: "Indonesia",
-    opponent_id: null,
-    stage_name: "FIFA ASEAN Cup 2026",
-    round_label: "Group A",
-    league_name: "FIFA ASEAN Cup 2026",
-    is_fallback_fixture: true
-  }
-];
-
-function fallbackNationalFixturesIfNeeded(
-  fixtures: any[],
-  nationalTeam: any
-): any[] {
-  if (fixtures.length > 0 || !nationalTeam?.id) {
-    return fixtures;
-  }
-
-  return BANGLADESH_FALLBACK_FIXTURES.map(
-    (fixture) => ({
-      ...fixture,
-      tracked_team_id: Number(nationalTeam.id),
-      tracked_team_name:
-        nationalTeam.name ??
-        "Bangladesh",
-      tracked_team_type: "national"
-    })
-  );
-}
 
 function mergeUpcomingFixtures(
   clubFixtures: any[],
@@ -2148,15 +2025,14 @@ function chooseLiveFixture(
 }
 
 export async function refreshPlayerPage() {
+  // This refresh file belongs exclusively to the Ben Brereton Díaz site.
+  // Keep the player identity fixed here so the BBD Supabase row can never
+  // accidentally be populated with another player.
   const playerName =
-    process.env.PLAYER_NAME ||
-    "Hamza Choudhury";
+    "Ben Brereton Díaz";
 
   const playerId =
-    Number(
-      process.env.PLAYER_ID ||
-      6135
-    );
+    6230;
 
   const player =
     await getPlayer(
@@ -2170,15 +2046,24 @@ export async function refreshPlayerPage() {
   }
 
   /*
-   * Start with the player ID. We prefer
-   * the team references returned on that
-   * player record rather than relying on
-   * the player's name.
+   * This site tracks Sheffield United as Ben's operational club
+   * while he is on loan. Do not let the Southampton parent-club
+   * relationship override the tracked team.
    */
-  const team =
-    await resolvePlayerTeam(
-      player
+  const teams =
+    await findTeam(
+      "Sheffield United"
     );
+
+  const team =
+    teams.find(
+      (candidate: any) =>
+        String(candidate?.name ?? "")
+          .trim()
+          .toLowerCase() ===
+        "sheffield united"
+    ) ??
+    teams[0];
 
   if (!team?.id) {
     throw new Error(
@@ -2390,10 +2275,7 @@ export async function refreshPlayerPage() {
     ];
 
   const nationalUpcoming =
-    fallbackNationalFixturesIfNeeded(
-      nationalUpcomingFromBsd,
-      nationalTeam
-    );
+    nationalUpcomingFromBsd;
 
   const mergedUpcoming =
     mergeUpcomingFixtures(
