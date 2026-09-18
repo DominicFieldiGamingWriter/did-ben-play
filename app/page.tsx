@@ -969,8 +969,10 @@ async function getConsensusMatchOdds(
         `https://sports.bzzoiro.com/api/v2/events/${fixtureId}/odds/`,
         {
           headers,
+          cache: "force-cache",
           next: {
-            revalidate: 60
+            revalidate: 60,
+            tags: [`odds-${fixtureId}`]
           }
         }
       );
@@ -1234,40 +1236,17 @@ export default async function Home() {
     upcomingFixtures[0] ??
     null;
 
-  const oddsCache =
-    new Map<number, Promise<any>>();
-
-  const getOdds = (fixture: any) => {
-    if (!fixture) {
-      return Promise.resolve(null);
-    }
-
-    const fixtureId = Number(fixture?.id);
-
-    if (!Number.isFinite(fixtureId)) {
-      return Promise.resolve(null);
-    }
-
-    const cached = oddsCache.get(fixtureId);
-
-    if (cached) {
-      return cached;
-    }
-
-    const request = getConsensusMatchOdds(
-      fixture
-    );
-
-    oddsCache.set(fixtureId, request);
-
-    return request;
-  };
-
   const [nextOdds, firstUpcomingOdds, chileOdds] =
     await Promise.all([
-      getOdds(next),
-      getOdds(firstUpcomingFixture),
-      getOdds(nextChileFixture)
+      next
+        ? getConsensusMatchOdds(next)
+        : Promise.resolve(null),
+      firstUpcomingFixture
+        ? getConsensusMatchOdds(firstUpcomingFixture)
+        : Promise.resolve(null),
+      nextChileFixture
+        ? getConsensusMatchOdds(nextChileFixture)
+        : Promise.resolve(null)
     ]);
 
   const appearanceSummaryText =
