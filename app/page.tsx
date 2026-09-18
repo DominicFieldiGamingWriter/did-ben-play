@@ -1,8 +1,12 @@
 import Image from "next/image";
+import type { Metadata } from "next";
 
 export const revalidate = 60;
 
-export const metadata = {
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/"
+  },
   title: "Did Ben Brereton Díaz Play?",
   description:
     "Did Ben Brereton Díaz play in his last match for club or country? Find out whether Big Ben started, was on the bench, scored or assisted in his latest game.",
