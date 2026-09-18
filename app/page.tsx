@@ -17,7 +17,31 @@ export const metadata = {
       "Did Ben Brereton Díaz play in his last match for club or country? Find out whether Big Ben started, was on the bench, scored or assisted in his latest game.",
   },
 };
+import { unstable_cache } from "next/cache";
 import { getSupabaseAdmin } from "../lib/supabase";
+
+
+const getCachedPlayerPage = unstable_cache(
+  async () => {
+    const { data, error } =
+      await getSupabaseAdmin()
+        .from("player_page")
+        .select("*")
+        .eq("id", 1)
+        .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
+  },
+  ["ben-player-page"],
+  {
+    revalidate: 60,
+    tags: ["ben-player-page"]
+  }
+);
 
 function dateValue(value: any): string | null {
   if (!value) return null;
@@ -2607,23 +2631,18 @@ function appearanceSummary(
 }
 
 export default async function Home() {
-  const supabase =
-    getSupabaseAdmin();
+  let data: any = null;
 
-  const {
-    data,
-    error
-  } =
-    await supabase
-      .from("player_page")
-      .select("*")
-      .eq("id", 1)
-      .maybeSingle();
+  try {
+    data = await getCachedPlayerPage();
+  } catch (error) {
+    console.error(
+      "Player page data lookup failed:",
+      error
+    );
+  }
 
-  if (
-    error ||
-    !data
-  ) {
+  if (!data) {
     return (
       <main className="page">
         <h1 className="main-heading">
