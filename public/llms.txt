@@ -1,0 +1,9 @@
+# Did Ben Brereton Díaz Play?
+
+> Did Ben Brereton Díaz Play? provides current information about Ben Brereton Díaz's football appearances for club and country.
+
+The site answers whether Ben Brereton Díaz played in his latest match and provides relevant match information, including starting status, bench status, minutes played, goals, assists, upcoming fixtures, and match odds.
+
+## Site
+
+- [Did Ben Brereton Díaz Play?](https://did-ben-play.vercel.app/): Main site containing Ben Brereton Díaz's latest appearance information, upcoming fixtures and related match data.
