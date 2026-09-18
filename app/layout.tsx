@@ -7,6 +7,14 @@ const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ??
   "https://did-ben-play.vercel.app";
 
+const personJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Person",
+  name: "Ben Brereton Díaz",
+  jobTitle: "Footballer",
+  url: siteUrl
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: "Did Ben Brereton Díaz Play?",
@@ -22,6 +30,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(personJsonLd)
+          }}
+        />
         {children}
 
         <Script
