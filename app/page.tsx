@@ -2464,9 +2464,7 @@ async function fetch1xBetFirstGoalScorer(
 }
 
 async function getConsensusMatchOdds(
-  fixture: any,
-  playerId: number,
-  playerName: string
+  fixture: any
 ) {
   const fixtureId =
     Number(fixture?.id);
@@ -2487,39 +2485,27 @@ async function getConsensusMatchOdds(
       Authorization: `Token ${apiKey}`
     };
 
-    const [summaryPayload, oneXBetFirstGoalScorer] =
-      await Promise.all([
-        (async () => {
-          const summaryResponse =
-            await fetch(
-              `https://sports.bzzoiro.com/api/v2/events/${fixtureId}/odds/`,
-              {
-                headers,
-                next: {
-                  revalidate: 60
-                }
-              }
-            );
-
-          if (!summaryResponse.ok) {
-            console.error(
-              "Consensus odds summary request failed:",
-              summaryResponse.status
-            );
-            return null;
+    const summaryResponse =
+      await fetch(
+        `https://sports.bzzoiro.com/api/v2/events/${fixtureId}/odds/`,
+        {
+          headers,
+          next: {
+            revalidate: 60
           }
+        }
+      );
 
-          return await summaryResponse.json();
-        })(),
-        fetch1xBetFirstGoalScorer(
-          fixture,
-          playerId,
-          playerName
-        )
-      ]);
+    if (!summaryResponse.ok) {
+      console.error(
+        "Consensus odds summary request failed:",
+        summaryResponse.status
+      );
+      return null;
+    }
 
-    const firstGoalScorerPrice =
-      oneXBetFirstGoalScorer;
+    const summaryPayload =
+      await summaryResponse.json();
 
     return {
       fixtureId,
@@ -2527,8 +2513,6 @@ async function getConsensusMatchOdds(
         getConsensus1X2(
           summaryPayload
         ),
-      benFirstGoalScorer:
-        firstGoalScorerPrice,
       updatedAt:
         summaryPayload?.last_update_at ??
         summaryPayload?.updated_at ??
@@ -2776,10 +2760,6 @@ export default async function Home() {
     upcomingFixtures[0] ??
     null;
 
-  const playerName =
-    data.player_name ??
-    "Ben Brereton Díaz";
-
   const oddsCache =
     new Map<number, Promise<any>>();
 
@@ -2801,9 +2781,7 @@ export default async function Home() {
     }
 
     const request = getConsensusMatchOdds(
-      fixture,
-      benPlayerId,
-      playerName
+      fixture
     );
 
     oddsCache.set(fixtureId, request);
@@ -4377,38 +4355,6 @@ export default async function Home() {
 
             <div className="odds-mini-card">
               <h3 className="odds-mini-title">
-                Next match odds
-              </h3>
-              <div className="odds-mini-subtitle">
-                Ben to score first goal
-              </div>
-              <div className="odds-mini-match">
-                {next
-                  ? fixtureName(next)
-                  : "No upcoming fixture"}
-              </div>
-
-              {numericPrice(
-                nextOdds?.benFirstGoalScorer
-              ) !== null ? (
-                <div className="odds-mini-row">
-                  <div className="odds-prices">
-                    <span>
-                      {formatOddsPrice(
-                        nextOdds?.benFirstGoalScorer
-                      )}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="odds-unavailable">
-                  No odds yet
-                </div>
-              )}
-            </div>
-
-            <div className="odds-mini-card">
-              <h3 className="odds-mini-title">
                 Next Chile match odds
               </h3>
               <div className="odds-mini-subtitle">
@@ -4442,40 +4388,6 @@ export default async function Home() {
                     <span>
                       (2) {formatOddsPrice(
                         chileOdds?.oneXTwo?.away
-                      )}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="odds-unavailable">
-                  No odds yet
-                </div>
-              )}
-            </div>
-
-            <div className="odds-mini-card">
-              <h3 className="odds-mini-title">
-                Next Chile match odds
-              </h3>
-              <div className="odds-mini-subtitle">
-                Ben to score first goal
-              </div>
-              <div className="odds-mini-match">
-                {nextChileFixture
-                  ? fixtureName(
-                      nextChileFixture
-                    )
-                  : "No upcoming Chile fixture"}
-              </div>
-
-              {numericPrice(
-                chileOdds?.benFirstGoalScorer
-              ) !== null ? (
-                <div className="odds-mini-row">
-                  <div className="odds-prices">
-                    <span>
-                      {formatOddsPrice(
-                        chileOdds?.benFirstGoalScorer
                       )}
                     </span>
                   </div>
