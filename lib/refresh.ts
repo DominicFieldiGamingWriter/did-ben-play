@@ -1699,6 +1699,57 @@ function playerTeamName(
   return "";
 }
 
+async function resolvePlayerTeam(
+  player: any
+) {
+  const directId =
+    playerTeamId(player);
+
+  if (directId > 0) {
+    const directTeam =
+      await getTeamById(directId);
+
+    if (directTeam?.id) {
+      return directTeam;
+    }
+  }
+
+  const name =
+    playerTeamName(player);
+
+  if (name) {
+    const teams =
+      await findTeam(name);
+
+    const exact =
+      teams.find(
+        (candidate: any) =>
+          String(
+            candidate?.name ?? ""
+          )
+            .trim()
+            .toLowerCase() ===
+          name.toLowerCase()
+      ) ?? teams[0];
+
+    if (exact?.id) {
+      return exact;
+    }
+  }
+
+  return null;
+}
+
+function playerIdForFallback(
+  player: any
+): number {
+  return Number(
+    player?.id ??
+    player?.player_id ??
+    0
+  );
+}
+
 function playerNationalTeamId(
   player: any
 ): number {
@@ -1836,7 +1887,7 @@ async function resolvePlayerNationalTeam(
    */
   const names = [
     discoveredName,
-    playerId === 6230
+    playerIdForFallback(player) === 6230
       ? "Chile"
       : ""
   ].filter(
@@ -2046,24 +2097,16 @@ export async function refreshPlayerPage() {
   }
 
   /*
-   * This site tracks Sheffield United as Ben's operational club
-   * while he is on loan. Do not let the Southampton parent-club
-   * relationship override the tracked team.
+   * Resolve Ben's current operational club from the BSD player record.
+   * This mirrors the Hamza refresh architecture: the player ID is the
+   * source of truth, rather than a permanently hardcoded club name.
+   * After a transfer, a refresh will therefore follow the new club once
+   * BSD updates the player record.
    */
-  const teams =
-    await findTeam(
-      "Sheffield United"
-    );
-
   const team =
-    teams.find(
-      (candidate: any) =>
-        String(candidate?.name ?? "")
-          .trim()
-          .toLowerCase() ===
-        "sheffield united"
-    ) ??
-    teams[0];
+    await resolvePlayerTeam(
+      player
+    );
 
   if (!team?.id) {
     throw new Error(
