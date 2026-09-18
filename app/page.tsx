@@ -1,3 +1,4 @@
+import Image from "next/image";
 
 export const revalidate = 60;
 
@@ -1314,7 +1315,7 @@ export default async function Home() {
           </h1>
 
           <div className="top-image-wrap">
-            <img
+            <Image
               className="top-image"
               src={
                 latestPlayed
@@ -1328,9 +1329,8 @@ export default async function Home() {
               }
               width={108}
               height={108}
-              loading="eager"
-              decoding="async"
-              fetchPriority="high"
+              sizes="(max-width: 500px) 86px, (max-width: 820px) 76px, 108px"
+              preload
             />
           </div>
 
@@ -1874,10 +1874,13 @@ export default async function Home() {
           </h2>
 
           <div className="bio-content">
-            <img
+            <Image
               className="bio-photo"
               src="/ben-bio.jpg"
               alt="Ben Brereton Díaz"
+              width={170}
+              height={170}
+              sizes="(max-width: 500px) 130px, (max-width: 820px) 145px, 170px"
             />
 
             <p>
