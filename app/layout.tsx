@@ -2,7 +2,13 @@ import "./globals.css";
 import type { Metadata } from "next";
 import Script from "next/script";
 
+const siteUrl =
+  process.env.SITE_URL ??
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  "https://did-ben-play.vercel.app";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "Did Ben Brereton Díaz Play?",
   description:
     "Did Ben Brereton Díaz play in his last match for club or country? Find out whether Big Ben started, was on the bench, scored or assisted in his latest game."
@@ -27,8 +33,8 @@ export default function RootLayout({
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){window.dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-4EQ1G5Z9Y7');
+            gtag("js", new Date());
+            gtag("config", "G-4EQ1G5Z9Y7");
           `}
         </Script>
       </body>
