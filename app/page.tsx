@@ -1670,10 +1670,15 @@ export default async function Home() {
           <div className="availability">
             <div>
               <div className="section-label">
-                AVAILABILITY
+                {nextStatus?.phase ===
+                "team_news"
+                  ? "TEAM NEWS"
+                  : "AVAILABILITY"}
               </div>
 
-              <div className="availability-status">
+              <div
+                className={`availability-status ${nextStatus?.tone ?? "positive"}`}
+              >
                 {nextStatus?.label ??
                   "Likely available"}
               </div>
@@ -1684,7 +1689,9 @@ export default async function Home() {
               </div>
             </div>
 
-            <div className="status-pill">
+            <div
+              className={`status-pill ${nextStatus?.tone ?? "positive"}`}
+            >
               {nextStatus?.label ??
                 "LIKELY AVAILABLE"}
             </div>
