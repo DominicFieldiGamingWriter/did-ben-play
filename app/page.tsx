@@ -1251,18 +1251,25 @@ export default async function Home() {
     upcomingFixtures[0] ??
     null;
 
-  const [nextOdds, firstUpcomingOdds, chileOdds] =
-    await Promise.all([
-      nextClubFixture
-        ? getConsensusMatchOdds(nextClubFixture)
-        : Promise.resolve(null),
-      firstUpcomingFixture
-        ? getConsensusMatchOdds(firstUpcomingFixture)
-        : Promise.resolve(null),
-      nextChileFixture
-        ? getConsensusMatchOdds(nextChileFixture)
-        : Promise.resolve(null)
-    ]);
+  const [
+    nextOdds,
+    nextFixtureOdds,
+    firstUpcomingOdds,
+    chileOdds
+  ] = await Promise.all([
+    nextClubFixture
+      ? getConsensusMatchOdds(nextClubFixture)
+      : Promise.resolve(null),
+    next
+      ? getConsensusMatchOdds(next)
+      : Promise.resolve(null),
+    firstUpcomingFixture
+      ? getConsensusMatchOdds(firstUpcomingFixture)
+      : Promise.resolve(null),
+    nextChileFixture
+      ? getConsensusMatchOdds(nextChileFixture)
+      : Promise.resolve(null)
+  ]);
 
   const appearanceSummaryText =
     appearanceSummary(
@@ -1675,6 +1682,20 @@ export default async function Home() {
 
               {fixtureTimes(next)}
             </>
+          )}
+
+          {hasComplete1X2(
+            nextFixtureOdds?.oneXTwo
+          ) && (
+            <div className="fixture-odds next-fixture-odds">
+              (1){" "}{formatOddsPrice(
+                nextFixtureOdds?.oneXTwo?.home
+              )}{" "}-{" "}(X){" "}{formatOddsPrice(
+                nextFixtureOdds?.oneXTwo?.draw
+              )}{" "}-{" "}(2){" "}{formatOddsPrice(
+                nextFixtureOdds?.oneXTwo?.away
+              )}
+            </div>
           )}
 
           <div className="availability">
