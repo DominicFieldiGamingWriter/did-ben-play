@@ -34,6 +34,13 @@ export async function GET(
     );
   }
 
+  const buildSha = process.env.VERCEL_GIT_COMMIT_SHA ?? null;
+  if (new URL(request.url).searchParams.get("check_build") === "1") {
+    return NextResponse.json({ ok: true, build_sha: buildSha }, {
+      headers: { "Cache-Control": "no-store, max-age=0" }
+    });
+  }
+
   try {
     const result =
       await refreshPlayerPage();
@@ -54,7 +61,10 @@ export async function GET(
         result.incident_count,
 
       incident_types:
-        result.incident_types
+        result.incident_types,
+
+      build_sha:
+        buildSha
     });
   } catch (error) {
     console.error(
