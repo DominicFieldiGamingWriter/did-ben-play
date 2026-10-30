@@ -1,5 +1,6 @@
 import Image from "next/image";
 import SelectionStatusCard from "./selection-status-card";
+import PostMatchRefresh from "./post-match-refresh";
 import type { Metadata } from "next";
 
 export const revalidate = 60;
@@ -1126,12 +1127,11 @@ export default async function Home() {
     data.live_fixture ??
     null;
 
-  const liveFixture =
-    isFreshLiveFixture(
-      storedLiveFixture
-    )
-      ? storedLiveFixture
-      : null;
+  const postMatchRefreshState = data.player_status?.post_match_refresh ?? null;
+  const storedLiveFixtureIsFresh = isFreshLiveFixture(storedLiveFixture);
+  const monitoredLiveFixture = postMatchRefreshState?.active === true && postMatchRefreshState?.fixture && Number(postMatchRefreshState.fixture_id) === Number(postMatchRefreshState.fixture?.id ?? postMatchRefreshState.fixture?.event_id) ? postMatchRefreshState.fixture : null;
+  const liveFixture = storedLiveFixtureIsFresh ? storedLiveFixture : monitoredLiveFixture;
+  const awaitingFullTimeResult = postMatchRefreshState?.active === true && !storedLiveFixtureIsFresh;
 
   const lastFixture =
     data.last_fixture ??
@@ -1328,6 +1328,10 @@ export default async function Home() {
       liveFixture,
       "away"
     );
+
+  const postMatchFixtureId = Number(postMatchRefreshState?.fixture_id ?? liveFixture?.id ?? liveFixture?.event_id) || null;
+  const postMatchKickoff = postMatchRefreshState?.kickoff_at ?? dateValue(liveFixture);
+  const postMatchRefreshActive = Boolean(postMatchFixtureId && postMatchKickoff && (liveFixture || postMatchRefreshState?.active === true));
 
   return (
     <>
@@ -1610,7 +1614,7 @@ export default async function Home() {
           <section className="live-section">
             <div className="live-heading-row">
               <h2 className="live-heading">
-                CURRENTLY PLAYING
+                {awaitingFullTimeResult ? "AWAITING FULL-TIME RESULT" : "CURRENTLY PLAYING"}
               </h2>
 
               {liveAnswer && (
@@ -1628,7 +1632,7 @@ export default async function Home() {
               <div className="live-card-inner">
                 <div>
                   <div className="section-label">
-                    LIVE MATCH
+                    {awaitingFullTimeResult ? "MATCH RESULT" : "LIVE MATCH"}
                   </div>
 
                   <h3 className="live-title">
@@ -1653,7 +1657,7 @@ export default async function Home() {
                   )}
 
                   <div className="live-status">
-                    LIVE
+                    {awaitingFullTimeResult ? "CHECKING RESULT" : "LIVE"}
                   </div>
                 </div>
 
@@ -1667,6 +1671,10 @@ export default async function Home() {
               </div>
             </div>
           </section>
+        )}
+
+        {postMatchRefreshActive && (
+          <PostMatchRefresh eventId={postMatchFixtureId} kickoff={postMatchKickoff} active={postMatchRefreshActive} />
         )}
 
         <h2 className="next-heading">

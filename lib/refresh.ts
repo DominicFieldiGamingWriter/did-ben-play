@@ -2137,7 +2137,20 @@ function chooseLiveFixture(
   return candidates[0] ?? null;
 }
 
+function hasConfirmedFinalResult(fixture: any): boolean {
+  const status = String(fixture?.status ?? fixture?.time?.status ?? "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+  const homeRaw = fixture?.home_score ?? fixture?.score?.home ?? fixture?.scores?.home ?? fixture?.home_team_score;
+  const awayRaw = fixture?.away_score ?? fixture?.score?.away ?? fixture?.scores?.away ?? fixture?.away_team_score;
+  const homeScore = homeRaw === null || homeRaw === undefined || homeRaw === "" ? NaN : Number(homeRaw);
+  const awayScore = awayRaw === null || awayRaw === undefined || awayRaw === "" ? NaN : Number(awayRaw);
+  return ["finished", "complete", "completed", "fulltime"].includes(status) && Number.isFinite(homeScore) && homeScore >= 0 && Number.isFinite(awayScore) && awayScore >= 0;
+}
 export async function refreshPlayerPage() {
+  const supabase = getSupabaseAdmin();
+  const { data: existingPageState, error: existingPageStateError } = await supabase.from("player_page").select("player_status").eq("id", 1).maybeSingle();
+  if (existingPageStateError) throw new Error(`Could not read existing page state: ${existingPageStateError.message}`);
+  const existingPlayerStatus = existingPageState?.player_status && typeof existingPageState.player_status === "object" ? existingPageState.player_status : {};
+  const existingPostMatchRefresh = existingPlayerStatus.post_match_refresh ?? null;
   // This refresh file belongs exclusively to the Ben Brereton Díaz site.
   // Keep the player identity fixed here so the BBD Supabase row can never
   // accidentally be populated with another player.
@@ -2453,6 +2466,17 @@ export async function refreshPlayerPage() {
       latestFinished.teamType
     );
 
+  const liveFixtureId = Number(normalisedLiveBase?.id ?? normalisedLiveBase?.event_id);
+  const liveFixtureKickoff = normalisedLiveBase?.date ?? normalisedLiveBase?.time?.kickoff_at ?? normalisedLiveBase?.kickoff_at ?? null;
+  const sameTrackedFixture = Number(existingPostMatchRefresh?.fixture_id) === liveFixtureId;
+  const monitorNow = new Date().toISOString();
+  let postMatchRefresh: any = existingPostMatchRefresh;
+  if (normalisedLiveBase && Number.isSafeInteger(liveFixtureId) && liveFixtureId > 0 && typeof liveFixtureKickoff === 'string' && Number.isFinite(Date.parse(liveFixtureKickoff))) {
+    postMatchRefresh = { ...existingPostMatchRefresh, active: true, completed: false, fixture_id: liveFixtureId, kickoff_at: liveFixtureKickoff, fixture: normalisedLiveBase, started_at: sameTrackedFixture ? existingPostMatchRefresh?.started_at ?? monitorNow : monitorNow, last_checked_at: sameTrackedFixture ? existingPostMatchRefresh?.last_checked_at ?? null : null };
+  } else if (existingPostMatchRefresh?.active === true) {
+    const finishedTrackedFixture = Number(normalisedLast?.id ?? normalisedLast?.event_id) === Number(existingPostMatchRefresh.fixture_id) && hasConfirmedFinalResult(normalisedLast);
+    postMatchRefresh = finishedTrackedFixture ? { ...existingPostMatchRefresh, active: false, completed: true, completed_at: monitorNow, fixture: null } : existingPostMatchRefresh;
+  }
   const payload = {
     id:
       1,
@@ -2507,15 +2531,15 @@ export async function refreshPlayerPage() {
       },
 
       next_match:
-        nextStatus
+        nextStatus,
+
+      post_match_refresh:
+        postMatchRefresh
     },
 
     updated_at:
       new Date().toISOString()
   };
-
-  const supabase =
-    getSupabaseAdmin();
 
   const { error } =
     await supabase
