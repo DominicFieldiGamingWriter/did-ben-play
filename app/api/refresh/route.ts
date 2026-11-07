@@ -68,6 +68,15 @@ export async function GET(
       incident_types:
         result.incident_types,
 
+      appearance_minutes:
+        result.appearance_minutes,
+
+      appearance_summary:
+        result.appearance_summary,
+
+      sent_off_minute:
+        result.sent_off_minute,
+
       build_sha:
         buildSha
     });
