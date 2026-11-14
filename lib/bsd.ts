@@ -652,6 +652,46 @@ export async function getTeamSquad(
   );
 }
 
+
+const CONFIRMED_INVALID_BSD_EVENT_IDS = new Set([214204]);
+function firstTeamFixtureRejectionReason(fixture: any): string | null {
+  const eventId = Number(fixture?.id ?? fixture?.event_id ?? fixture?.fixture_id);
+  if (CONFIRMED_INVALID_BSD_EVENT_IDS.has(eventId)) return "confirmed_invalid_provider_event";
+  const youthPattern = /(?:^|\b)(?:u\s?\d{2}|under\s?\d{2}|youth|academy|reserve|development|dev squad|b team|ii team|second team|third team|premier league 2|professional development league)(?:\b|$)/i;
+  for (const teamName of [getFixtureTeamName(fixture, "home"), getFixtureTeamName(fixture, "away")]) {
+    if (teamName !== "Unknown" && youthPattern.test(teamName)) return "youth_or_reserve_team_name";
+  }
+  const metadataText: string[] = [];
+  const visited = new Set<any>();
+  const collect = (value: any, depth = 0) => {
+    if (!value || depth > 4 || visited.has(value)) return;
+    if (typeof value === "string") { metadataText.push(value); return; }
+    if (Array.isArray(value)) { for (const item of value.slice(0, 20)) collect(item, depth + 1); return; }
+    if (typeof value !== "object") return;
+    visited.add(value);
+    for (const [key, child] of Object.entries(value)) {
+      if (/(league|competition|tournament|stage|category|division|group|round|format|team)/i.test(key)) collect(child, depth + 1);
+      else if (child && typeof child === "object" && depth < 2) collect(child, depth + 1);
+    }
+  };
+  collect(fixture);
+  return youthPattern.test(metadataText.join(" ")) ? "youth_or_reserve_competition_metadata" : null;
+}
+function isEligibleFirstTeamFixture(fixture: any): boolean {
+  const reason = firstTeamFixtureRejectionReason(fixture);
+  if (reason) {
+    console.warn("BSD_FIXTURE_REJECTED", JSON.stringify({
+      id: fixture?.id ?? fixture?.event_id ?? null,
+      reason,
+      competition: fixture?.league?.name ?? fixture?.competition?.name ?? fixture?.league_name ?? fixture?.competition_name ?? null,
+      home: getFixtureTeamName(fixture, "home"),
+      away: getFixtureTeamName(fixture, "away")
+    }));
+    return false;
+  }
+  return true;
+}
+
 function isTerminalStatus(
   fixture: any
 ): boolean {
@@ -832,7 +872,7 @@ export async function getTeamFixtures(
   let finished =
     responseArray(
       finishedData
-    );
+    ).filter(isEligibleFirstTeamFixture);
 
   let live =
     responseArray(
@@ -843,6 +883,7 @@ export async function getTeamFixtures(
           fixture,
           teamId
         ) &&
+        isEligibleFirstTeamFixture(fixture) &&
         isCurrentlyLive(
           fixture
         ) &&
@@ -854,7 +895,7 @@ export async function getTeamFixtures(
   let upcoming =
     responseArray(
       upcomingData
-    );
+    ).filter(isEligibleFirstTeamFixture);
 
   /*
    * Keep a team-scoped fallback for feeds
@@ -892,6 +933,7 @@ export async function getTeamFixtures(
             fixture,
             teamId
           ) &&
+          isEligibleFirstTeamFixture(fixture) &&
           isCurrentlyLive(
             fixture
           ) &&
@@ -919,7 +961,7 @@ export async function getTeamFixtures(
     upcoming =
       responseArray(
         fallback
-      );
+      ).filter(isEligibleFirstTeamFixture);
   }
 
   const now =

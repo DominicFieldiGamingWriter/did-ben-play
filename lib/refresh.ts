@@ -2615,39 +2615,30 @@ export async function refreshPlayerPage() {
       ? nationalFixtures.next
       : [];
 
+  const useFotMobEmergencyFallback = nationalUpcomingFromBsd.length === 0;
   const nationalTeamFotMobResult =
-    nationalTeam?.name
-      ? await getFotMobNationalTeamFixtures(
-          nationalTeam.name,
-          Number(nationalTeam.id) || 0
-        )
+    useFotMobEmergencyFallback && nationalTeam?.name
+      ? await getFotMobNationalTeamFixtures(nationalTeam.name, Number(nationalTeam.id) || 0)
       : {
           fixtures: [],
           diagnostics: {
-            skipped: "No national team was resolved."
+            skipped: !nationalTeam?.name ? "No national team was resolved." : "BSD supplied eligible upcoming fixtures; FotMob fallback not needed."
           }
         };
-
-  // BSD entries come first, so duplicate fixtures retain the BSD event ID.
-  const nationalUpcomingFromProviders = dedupeFixturesByTeamsAndKickoff([
-    ...nationalUpcomingFromBsd,
-    ...nationalTeamFotMobResult.fixtures
-  ]);
-  const nationalFotMobAddedCount = Math.max(
-    0,
-    nationalUpcomingFromProviders.length -
-      dedupeFixturesByTeamsAndKickoff(nationalUpcomingFromBsd).length
+  const nationalUpcomingFromProviders = dedupeFixturesByTeamsAndKickoff(
+    nationalUpcomingFromBsd.length > 0 ? nationalUpcomingFromBsd : nationalTeamFotMobResult.fixtures
   );
+  const nationalFotMobAddedCount = nationalUpcomingFromBsd.length === 0 ? nationalUpcomingFromProviders.length : 0;
   const nationalTeamLookup = {
     checked_at: new Date().toISOString(),
     team: nationalTeam?.name ?? null,
     bsd_upcoming_count: nationalUpcomingFromBsd.length,
     fotmob_upcoming_count: nationalTeamFotMobResult.fixtures.length,
-    fotmob_added_count: nationalFotMobAddedCount,
-    fotmob_supplement: nationalTeamFotMobResult.diagnostics,
+    fotmob_fallback_used_count: nationalFotMobAddedCount,
+    fotmob_emergency_fallback: nationalTeamFotMobResult.diagnostics,
     selected_upcoming_source:
       nationalUpcomingFromBsd.length > 0 && nationalFotMobAddedCount > 0
-        ? "bsd+fotmob"
+        ? "bsd"
         : nationalUpcomingFromBsd.length > 0
           ? "bsd"
           : nationalTeamFotMobResult.fixtures.length > 0
@@ -2987,7 +2978,7 @@ export async function refreshPlayerPage() {
 
     national_fixture_source:
       nationalUpcomingFromBsd.length > 0 && nationalFotMobAddedCount > 0
-        ? "bsd+fotmob"
+        ? "bsd"
         : nationalUpcomingFromBsd.length > 0
           ? "bsd"
           : nationalTeamFotMobResult.fixtures.length > 0
