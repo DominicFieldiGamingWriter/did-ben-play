@@ -82,15 +82,15 @@ export async function runFootballScheduler(){
    const candidate=started[0];
    if(candidate){
     const cid=idOf(candidate),ck=kickoffOf(candidate)!,event=await withBsdUsageContext({job_type:"live_fixture_detection",fixture_id:cid},()=>getEvent(cid));
-    if(event&&isFinal(event,cid)&&now>=Date.parse(ck)+POST_START_MS)return {ok:true,...(await postMatchCheck(s,candidate,cid,ck,event))};
+    if(event&&now>=Date.parse(ck)+POST_START_MS)return {ok:true,...(await postMatchCheck(s,candidate,cid,ck,event))};
     if(event&&(isLive(event)||isFinal(event,cid)))return {ok:true,...(await updateLive(s,candidate,cid,ck,event))};
    }
   }
-  if(due(s.last_fixture_discovery_at,DISCOVERY_MS))return {ok:true,...(await discoverFixtures(s))};
   if(due(s.last_full_refresh_at,IDLE_REFRESH_MS)){
    const lineupWindow=(Array.isArray(s.next_fixtures)?s.next_fixtures:[]).some((f:any)=>{const d=kickoffOf(f);if(!d||f?.fixture_source==="fotmob")return false;const mins=(Date.parse(d)-now)/60000;return mins<=65&&mins>=-120;});
    if(!lineupWindow){const start=Date.now();await withBsdUsageContext({job_type:"idle_full_refresh"},()=>refreshPlayerPage());trackBsdRefreshRun({started_at:new Date(start).toISOString(),finished_at:new Date().toISOString(),duration_ms:Date.now()-start,result:"success",provider_code:null});await refreshView();return {ok:true,action:"idle_full_refresh"};}
   }
+  if(due(s.last_fixture_discovery_at,DISCOVERY_MS))return {ok:true,...(await discoverFixtures(s))};
   return {ok:true,action:"nothing_due"};
  }catch(error){failure=error instanceof Error?error.message.slice(0,300):"Scheduler failed.";throw error;}finally{await release(key,failure);}
 }
