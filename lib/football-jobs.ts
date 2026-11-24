@@ -81,9 +81,12 @@ export async function runFootballScheduler(){
    const started=(Array.isArray(s.next_fixtures)?s.next_fixtures:[]).filter((f:any)=>f?.fixture_source!=="fotmob"&&idOf(f)&&kickoffOf(f)).filter((f:any)=>Date.parse(kickoffOf(f)!)<=now&&Date.parse(kickoffOf(f)!)>=now-6*60*60*1000).sort((a:any,b:any)=>Date.parse(kickoffOf(b)!)-Date.parse(kickoffOf(a)!));
    const candidate=started[0];
    if(candidate){
-    const cid=idOf(candidate),ck=kickoffOf(candidate)!,event=await withBsdUsageContext({job_type:"live_fixture_detection",fixture_id:cid},()=>getEvent(cid));
-    if(event&&now>=Date.parse(ck)+POST_START_MS)return {ok:true,...(await postMatchCheck(s,candidate,cid,ck,event))};
-    if(event&&(isLive(event)||isFinal(event,cid)))return {ok:true,...(await updateLive(s,candidate,cid,ck,event))};
+    const cid=idOf(candidate),ck=kickoffOf(candidate)!,postMatchWindow=now>=Date.parse(ck)+POST_START_MS;
+    if(!postMatchWindow||due(monitor.last_checked_at,POST_RETRY_MS-5000)){
+     const event=await withBsdUsageContext({job_type:postMatchWindow?"post_match_status":"live_fixture_detection",fixture_id:cid},()=>getEvent(cid));
+     if(event&&postMatchWindow)return {ok:true,...(await postMatchCheck(s,candidate,cid,ck,event))};
+     if(event&&(isLive(event)||isFinal(event,cid)))return {ok:true,...(await updateLive(s,candidate,cid,ck,event))};
+    }
    }
   }
   if(due(s.last_full_refresh_at,IDLE_REFRESH_MS)){
