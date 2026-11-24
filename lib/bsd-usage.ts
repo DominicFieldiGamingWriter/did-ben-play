@@ -56,11 +56,34 @@ function scheduleUsageWrite(payload: UsagePayload) {
   }
 }
 
-export function trackBsdApiRequest(record: ApiUsageRecord) {
-  scheduleUsageWrite({
-    kind: "api_request",
-    record: { ...record, site: "ben" }
-  });
+export async function trackBsdApiRequest(record: ApiUsageRecord) {
+  try {
+    const secret = process.env.BSD_USAGE_INGEST_SECRET;
+    if (!secret) {
+      throw new Error("BSD_USAGE_INGEST_SECRET is not configured.");
+    }
+
+    const response = await fetch(
+      "https://www.didhamzaplay.com/api/admin/bsd-usage-ingest",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${secret}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          kind: "api_request",
+          record: { ...record, site: "ben" }
+        }),
+        cache: "no-store"
+      }
+    );
+    if (!response.ok) {
+      throw new Error(`Usage ingestion returned HTTP ${response.status}.`);
+    }
+  } catch (error) {
+    console.error("BSD_USAGE_WRITE_FAILED", error);
+  }
 }
 
 export function trackBsdRefreshRun(record: RefreshUsageRecord) {
