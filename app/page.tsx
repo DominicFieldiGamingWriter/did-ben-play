@@ -1,6 +1,5 @@
 import Image from "next/image";
 import SelectionStatusCard from "./selection-status-card";
-import PostMatchRefresh from "./post-match-refresh";
 import type { Metadata } from "next";
 
 export const revalidate = 60;
@@ -1253,7 +1252,7 @@ export default async function Home() {
     ? (Date.parse(nextDate) - Date.now()) / 60000
     : null;
   const selectionWindowActive = nextKickoffMinutes !== null &&
-    nextKickoffMinutes <= 75 && nextKickoffMinutes >= -120;
+    nextKickoffMinutes <= 65 && nextKickoffMinutes >= -120;
 
   const nextClubFixture =
     nextFixtures.find(
@@ -1717,9 +1716,7 @@ export default async function Home() {
           </section>
         )}
 
-        {postMatchRefreshActive && (
-          <PostMatchRefresh eventId={postMatchFixtureId} kickoff={postMatchKickoff} active={postMatchRefreshActive} />
-        )}
+
 
         <h2 className="next-heading">
           WILL BEN PLAY NEXT?

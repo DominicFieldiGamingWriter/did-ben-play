@@ -997,6 +997,12 @@ function isFreshLiveFixture(
   );
 }
 
+const getCachedGlobalLiveEvents = unstable_cache(
+  async () => bsdGet<any>("/events/live/", { limit: 200 }),
+  ["bsd-global-live-events-v1"],
+  { revalidate: 60 }
+);
+
 export async function getTeamFixtures(
   teamId: number
 ) {
@@ -1016,12 +1022,7 @@ export async function getTeamFixtures(
       }
     ),
 
-    bsdGet<any>(
-      "/events/live/",
-      {
-        limit: 200
-      }
-    ),
+    getCachedGlobalLiveEvents(),
 
     bsdGet<any>(
       "/events/",
@@ -1227,6 +1228,13 @@ export async function getTeamFixtures(
 
     next
   };
+}
+
+export async function getEvent(eventId:number){if(!Number.isSafeInteger(eventId)||eventId<=0)return null;return getEventById(eventId);}
+export async function getUpcomingFixturesForTeam(teamId:number){
+ if(!Number.isSafeInteger(teamId)||teamId<=0)throw new Error("A valid team ID is required.");
+ const data=await bsdGet<any>("/events/",{team_id:teamId,status:"notstarted",limit:100});
+ return responseArray(data);
 }
 
 export async function getLineups(
