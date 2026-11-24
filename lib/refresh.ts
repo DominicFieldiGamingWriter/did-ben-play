@@ -1711,9 +1711,9 @@ export async function buildLivePlayerStatus(
   if (!live?.id) return null;
 
   try {
-    let incidents:any[]=[];let playerStats:any[]=[];const lineups:any[]=[];
-    if(preloaded){incidents=Array.isArray(preloaded.incidents)?preloaded.incidents:[];playerStats=Array.isArray(preloaded.playerStats)?preloaded.playerStats:[];}
-    else{const [ir,sr]=await Promise.allSettled([getFixtureIncidents(Number(live.id)),getFixturePlayerStats(Number(live.id))]);incidents=ir.status==="fulfilled"?responseArray(ir.value):[];playerStats=sr.status==="fulfilled"?responseArray(sr.value):[];}
+    let incidents:any[]=[];let playerStats:any[]=[];const lineups:any[]=[];const lineupData:any={status:"unavailable",lineups:[]};let incidentsAvailable=false;
+    if(preloaded){incidents=Array.isArray(preloaded.incidents)?preloaded.incidents:[];playerStats=Array.isArray(preloaded.playerStats)?preloaded.playerStats:[];incidentsAvailable=true;}
+    else{const [ir,sr]=await Promise.allSettled([getFixtureIncidents(Number(live.id)),getFixturePlayerStats(Number(live.id))]);incidents=ir.status==="fulfilled"?responseArray(ir.value):[];incidentsAvailable=ir.status==="fulfilled";playerStats=sr.status==="fulfilled"?responseArray(sr.value):[];}
     const appearance = playerPlayed(
       playerId,
       playerName,
@@ -1875,7 +1875,7 @@ export async function buildLivePlayerStatus(
     const livePlayerEvents = {
       goal_minutes: goalMinutes,
       assist_minutes: assistMinutes,
-      incidents_available: incidentResult.status === "fulfilled"
+      incidents_available: incidentsAvailable
     };
 
     if (hasAppeared) {
@@ -2787,22 +2787,33 @@ export async function refreshPlayerPage(
       ? nationalSquadPlayer
       : squadPlayer;
 
-  const [
-    lineupData,
-    playerStats,
-    rawIncidents
-  ] =
-    await Promise.all([
-      getLineups(
-        latestLast.id
-      ),
-      getFixturePlayerStats(
-        latestLast.id
-      ),
-      getFixtureIncidents(
-        latestLast.id
-      )
-    ]);
+  const storedLastSelection =
+    existingPlayerStatus.next_match && typeof existingPlayerStatus.next_match === "object" &&
+    Number(existingPlayerStatus.next_match.lineup_fixture_id) === Number(latestLast.id)
+      ? existingPlayerStatus.next_match
+      : null;
+  const storedLastSelectionStatus = String(storedLastSelection?.status ?? storedLastSelection?.type ?? "");
+  const latestSelectionIsConfirmed = [
+    "confirmed_start",
+    "confirmed_bench",
+    "confirmed_not_in_squad"
+  ].includes(storedLastSelectionStatus);
+  const syntheticLatestLineup = {
+    status: latestSelectionIsConfirmed ? "confirmed" : "unavailable",
+    lineups: [{
+      starting_xi: storedLastSelectionStatus === "confirmed_start"
+        ? [{ id: playerId, player: { id: playerId }, is_starter: true }]
+        : [],
+      substitutes: storedLastSelectionStatus === "confirmed_bench"
+        ? [{ id: playerId, player: { id: playerId }, is_substitute: true }]
+        : []
+    }]
+  };
+  const lineupData = syntheticLatestLineup;
+  const [playerStats, rawIncidents] = await Promise.all([
+    getFixturePlayerStats(latestLast.id),
+    getFixtureIncidents(latestLast.id)
+  ]);
 
   const incidents =
     await normaliseIncidents(
