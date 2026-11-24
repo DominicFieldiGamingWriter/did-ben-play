@@ -97,13 +97,13 @@ export async function runFootballScheduler(){
 export async function runLineupWorker(){
  const s=await readPage(),fs=(Array.isArray(s.next_fixtures)?s.next_fixtures:[]).filter((f:any)=>f&&f.fixture_source!=="fotmob"&&idOf(f)>0&&kickoffOf(f)).sort((a:any,b:any)=>Date.parse(kickoffOf(a)!)-Date.parse(kickoffOf(b)!)),f=fs[0];
  if(!f)return {ok:true,action:"no_bsd_fixture"};
- const id=idOf(f),kickoff=kickoffOf(f)!,mins=(Date.parse(kickoff)-Date.now())/60000;if(mins>65||mins< -120)return {ok:true,action:"outside_lineup_window"};
+ const id=idOf(f),kickoff=kickoffOf(f)!,mins=(Date.parse(kickoff)-Date.now())/60000;if(mins>65||mins< -120)return {ok:true,action:"outside_lineup_window"};if(Date.now()>=Date.parse(kickoff)+POST_START_MS)return {ok:true,action:"post_match_window_started"};
  const ps=obj(s.player_status),existing=obj(ps.next_match);if(isDefinitive(existing,id))return {ok:true,action:"already_confirmed",status:existing.status};if(!due(existing.lineup_checked_at,115000))return {ok:true,action:"lineup_check_not_due"};
  const key="lineup-"+id;if(!(await claim(key,100)))return {ok:true,skipped:true,reason:"already_running"};let failure:string|null=null;
  try{
-  let decision:any;try{const data=await withBsdUsageContext({job_type:"lineup",fixture_id:id},()=>getLineups(id));decision=resolveTeamSheetStatus(Number(s.player_id),data);}
+  let decision:any,lineupData:any=null;try{lineupData=await withBsdUsageContext({job_type:"lineup",fixture_id:id},()=>getLineups(id));decision=resolveTeamSheetStatus(Number(s.player_id),lineupData);}
   catch(error){failure=error instanceof Error?error.message.slice(0,300):"Lineup request failed.";decision=resolveTeamSheetStatus(Number(s.player_id),null);decision.reason="The official lineup feed could not be reached. The scheduled checker will retry.";}
-  const checked=new Date().toISOString(),result={...decision,lineup_fixture_id:id,lineup_checked_at:checked,fixture_kickoff:kickoff},saved=await savePage(s,{player_status:{...ps,next_match:result}});
+  const checked=new Date().toISOString(),result={...decision,lineup_fixture_id:id,lineup_checked_at:checked,fixture_kickoff:kickoff,lineup_data:lineupData},saved=await savePage(s,{player_status:{...ps,next_match:result}});
   if(saved)await refreshView();return {ok:true,action:saved?"lineup_checked":"write_conflict",fixture_id:id,status:result.status};
  }finally{await release(key,failure);}
 }
