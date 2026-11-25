@@ -50,5 +50,6 @@ Required repository secrets:
 
 ## Notes
 
-- Near kick-off the page also polls `/api/lineup-status` every minute to pick up the official team sheet.
+- Near kick-off the page subscribes to a restricted Supabase Realtime lineup-status feed; the browser no longer polls a Vercel route.
+- Local development also requires `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 - The site is intentionally conservative with labels (Started / Bench / Injured / Suspended / Not selected).
